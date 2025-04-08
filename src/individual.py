@@ -3,9 +3,11 @@ import random
 import copy
 from PIL import Image, ImageDraw
 
+from mutation import complete_mutation, single_gene_mutation, limited_multi_gene_mutation, uniform_multi_gene_mutation
+
 
 class TriangleIndividual:
-    def __init__(self, triangles, canvas_size):
+    def __init__(self, triangles, canvas_size, fitness=None):
         """
         Initialize a TriangleIndividual.
 
@@ -18,7 +20,7 @@ class TriangleIndividual:
 
         self.triangles = triangles
         self.canvas_size = canvas_size
-        self.fitness = None
+        self.fitness = fitness
 
     @classmethod
     def random_initialize(cls, num_triangles, canvas_size):
@@ -61,36 +63,22 @@ class TriangleIndividual:
         during mutation or crossover.
         """
 
-        return TriangleIndividual(copy.deepcopy(self.triangles), self.canvas_size)
+        return TriangleIndividual(copy.deepcopy(self.triangles), self.canvas_size, self.fitness)
 
-    def mutate(self, mutation_rate=0.01, delta=10):
-        """
-        Apply mutations to the individual's genotype.
-
-        Each triangle has a chance to have one of its point coordinates or one
-        of its color components adjusted by a random delta.
-
-        Parameters:
-        - mutation_rate: probability of mutating each attribute
-        - delta: maximum change applied during mutation
-        """
-
-        width, height = self.canvas_size
+    def mutate(self, mutation_rate=0.01, delta=10, mutation_strategy="uniform", num_mutated_genes=None):
+        new_triangles = []
         for triangle in self.triangles:
-            # Mutate a coordinate of a randomly chosen vertex
-            if random.random() < mutation_rate:
-                point = random.choice(["x1", "y1", "x2", "y2", "x3", "y3"])
-                triangle[point] += random.randint(-delta, delta)
-                # Ensure the coordinate stays within canvas bounds
-                triangle[point] = max(0, min(triangle[point], width if 'x' in point else height))
-
-            # Mutate one of the color components
-            if random.random() < mutation_rate:
-                c_idx = random.randint(0, 3)
-                color = list(triangle["color"])
-                color[c_idx] += random.randint(-delta, delta)
-                color[c_idx] = max(0, min(color[c_idx], 255))
-                triangle["color"] = tuple(color)
+            if mutation_strategy == "single":
+                mutated_triangle = single_gene_mutation(triangle, mutation_rate, delta, self.canvas_size)
+            elif mutation_strategy == "limited":
+                mutated_triangle = limited_multi_gene_mutation(
+                    triangle, delta, self.canvas_size, mutation_rate, num_mutated_genes)
+            elif mutation_strategy == "complete":
+                mutated_triangle = complete_mutation(triangle, mutation_rate, delta, self.canvas_size)
+            else:
+                mutated_triangle = uniform_multi_gene_mutation(triangle, mutation_rate, delta, self.canvas_size)
+            new_triangles.append(mutated_triangle)
+        self.triangles = new_triangles
 
     def render(self):
         """

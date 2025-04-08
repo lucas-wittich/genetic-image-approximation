@@ -14,11 +14,9 @@ def delta_mutation(gene_value, delta):
 
 
 def single_gene_mutation(triangle, mutation_rate, delta, canvas_size):
-
     if random.random() < mutation_rate:
         chosen_gene = random.choice(all_genes)
         width, height = canvas_size
-
         if isinstance(chosen_gene, str):
             if chosen_gene.startswith('x'):
                 mutated_value = delta_mutation(triangle[chosen_gene], delta)
@@ -32,39 +30,16 @@ def single_gene_mutation(triangle, mutation_rate, delta, canvas_size):
             new_value = delta_mutation(color[index], delta)
             color[index] = int(max(0, min(new_value, 255)))
             triangle[key] = tuple(color)
-
     return triangle
 
 
 def limited_multi_gene_mutation(triangle, delta, canvas_size, mutation_rate, num_mutated_genes=None):
-    """
-    Applies limited multi-gene mutation, selecting a random subset of genes (of specified size)
-    to mutate by delta adjustment.
-
-    Let M be the total number of genes; choose a random integer m (or use the provided num_mutated_genes)
-    and then for each gene in the randomly chosen subset apply:
-
-        g' = g + Δ   where Δ ~ Uniform(-delta, delta)
-
-    Parameters:
-    - triangle: dictionary representing a triangle.
-    - mutation_rate: base mutation probability to be used for each selected gene.
-    - delta: Maximum allowed change.
-    - num_mutated_genes: int, number of genes to mutate (if None, a random value from 1 to M is chosen).
-    - canvas_size: tuple (width, height) for clamping coordinate values.
-
-    Returns:
-    - The mutated triangle dictionary.
-    """
-
     if random.random() < mutation_rate:
         M = len(all_genes)
         if num_mutated_genes is None:
             num_mutated_genes = random.randint(1, M)
-
         selected_genes = random.sample(all_genes, num_mutated_genes)
         width, height = canvas_size
-
         for gene in selected_genes:
             if isinstance(gene, str):
                 if gene.startswith("x"):
@@ -80,12 +55,11 @@ def limited_multi_gene_mutation(triangle, delta, canvas_size, mutation_rate, num
                 color[i] = int(max(0, min(mutated_value, 255)))
                 triangle[key] = tuple(color)
 
-        return triangle
+    return triangle
 
 
 def uniform_multi_gene_mutation(triangle, mutation_rate, delta, canvas_size):
     width, height = canvas_size
-
     for key in coord_keys:
         if random.random() < mutation_rate:
             if key.startswith("x"):
@@ -94,7 +68,6 @@ def uniform_multi_gene_mutation(triangle, mutation_rate, delta, canvas_size):
             elif key.startswith("y"):
                 new_value = delta_mutation(triangle[key], delta)
                 triangle[key] = int(max(0, min(new_value, height)))
-
     for gene in color_keys:
         key, index = gene
         if random.random() < mutation_rate:
@@ -102,7 +75,6 @@ def uniform_multi_gene_mutation(triangle, mutation_rate, delta, canvas_size):
             new_value = delta_mutation(color[index], delta)
             color[index] = int(max(0, min(new_value, 255)))
             triangle[key] = tuple(color)
-
     return triangle
 
 
@@ -111,7 +83,6 @@ def complete_mutation(triangle, mutation_rate, delta, canvas_size):
         coord_genes = ["x1", "y1", "x2", "y2", "x3", "y3"]
         color_genes = [("color", i) for i in range(4)]
         width, height = canvas_size
-
         for key in coord_genes:
             if key.startswith("x"):
                 new_value = delta_mutation(triangle[key], delta)
@@ -119,7 +90,6 @@ def complete_mutation(triangle, mutation_rate, delta, canvas_size):
             elif key.startswith("y"):
                 new_value = delta_mutation(triangle[key], delta)
                 triangle[key] = int(max(0, min(new_value, height)))
-
         for gene in color_genes:
             key, index = gene
             color = list(triangle[key])

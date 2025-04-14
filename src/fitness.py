@@ -1,37 +1,58 @@
-# Fitness functions for both exercises
+
 import numpy as np
 from PIL import Image
 
 
-def compute_mse(image1, image2):
+def normalize_image(img):
+    """Convert PIL RGBA image to a normalized numpy array (0–1 range)."""
+    return np.asarray(img).astype(np.float32) / 255.0
+
+
+def premultiply_rgb(img):
+    """Apply premultiplied alpha to RGB channels (perceptual blending)."""
+    rgb = img[..., :3]
+    alpha = img[..., 3:]
+    return rgb * alpha
+
+
+def compute_alpha_weight(img1, img2):
+    """Compute per-pixel alpha weight for RGB loss, based on transparency."""
+    a1 = img1[..., 3]
+    a2 = img2[..., 3]
+    return np.clip((a1 + a2) / 2.0, 0.001, 1.0)  # avoid division by zero
+
+
+def triangle_area(triangle):
+    """Calculate area of a triangle given its vertex coordinates."""
+    x1, y1 = triangle["x1"], triangle["y1"]
+    x2, y2 = triangle["x2"], triangle["y2"]
+    x3, y3 = triangle["x3"], triangle["y3"]
+    return abs((x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2)) / 2.0)
+
+
+def compute_triangle_fitness(individual, target_img):
     """
-    Compute Mean Squared Error between two numpy arrays.
-    Assumes image1 and image2 are of the same shape.
+    Compute fitness based on alpha-aware RGB difference + alpha loss + area penalty.
+
+    Lower fitness is better.
     """
+    canvas = individual.render()
+    canvas_np = normalize_image(canvas)
+    target_np = normalize_image(target_img)
 
-    return np.mean((image1 - image2) ** 2)
+    # Premultiplied RGB loss (alpha-weighted)
+    rgb1 = premultiply_rgb(canvas_np)
+    rgb2 = premultiply_rgb(target_np)
+    alpha_weight = compute_alpha_weight(canvas_np, target_np)
+    mse_rgb = np.mean(alpha_weight[..., None] * (rgb1 - rgb2) ** 2)
 
+    # Alpha loss (unweighted MSE on alpha channel)
+    mse_alpha = np.mean((canvas_np[..., 3] - target_np[..., 3]) ** 2)
 
-def compute_triangle_fitness(individual, target_image):
-    """
-    Evaluate fitness for a triangle-based individual.
+    # Triangle area penalty (regularization)
+    canvas_area = canvas_np.shape[0] * canvas_np.shape[1]
+    avg_area = np.mean([triangle_area(t) for t in individual.triangles])
+    area_penalty_weight = 0.2
+    area_penalty = (avg_area / canvas_area) * area_penalty_weight
 
-    Parameters:
-    - individual: A TriangleIndividual with a rendered output.
-    - target_image: A PIL Image of the target.
-
-    Steps:
-    1. Render the individual to get the generated image.
-    2. Convert both the generated image and the target image to grayscale.
-    3. Calculate MSE between the two images.
-    4. Return a fitness value that increases as the error decreases.
-    """
-
-    rendered_image = individual.render()
-    # Convert images to grayscale
-    rendered_gray = np.array(rendered_image.convert('L'))
-    target_gray = np.array(target_image.convert('L'))
-
-    mse_value = compute_mse(rendered_gray, target_gray)
-    fitness = 1 / (1 + mse_value)
-    return fitness
+    return mse_rgb + 0.25 * mse_alpha + area_penalty

@@ -1,72 +1,108 @@
+
 import json
+import os
+import matplotlib.pyplot as plt
+import pandas as pd
 from PIL import Image
 from ga_engine import GAEngine
-import os
+
+
+def save_gif(frames, path, duration=300):
+    """Save a sequence of PIL images as an animated GIF."""
+    if frames:
+        frames[0].save(path, save_all=True, append_images=frames[1:], duration=duration, loop=0)
 
 
 def main():
-    # Load configuration from config.json
-    with open('../configs/config.json', "r") as f:
+    with open('../configs/config_high_quality.json', "r") as f:
         config = json.load(f)
 
-    # Load the target image and convert it to RGBA
     target_image = Image.open(config["target_image"]).convert("RGBA")
-
-    # Get canvas size as a tuple (or simply use target_image.size)
     canvas_size = target_image.size
+    runs = config.get("runs_per_config", 5)
 
-    # Extract GA parameters from the config file
-    num_triangles = config["num_triangles"]
-    population_size = config["population_size"]
-    num_generations = config["num_generations"]
-    mutation_rate = config["mutation_rate"]
-    crossover_rate = config["crossover_rate"]
-    num_mutated_genes = config["num_mutated_genes"]
-    delta = config["delta"]
-    mutation_strategy = config["mutation_strategy"]
-    selection_method = config["selection_method"]
-    selection_params = config.get("selection_params", {})
+    all_stats = []
+    all_snapshots = []
+    best_overall = None
+    best_final_fitness = float('inf')
 
-    # Extract termination parameters
-    termination_params = config.get("termination", {})
-    window_size = termination_params.get("window_size", 10)
-    stagnation_threshold = termination_params.get("stagnation_threshold", 0.001)
-    diversity_threshold = termination_params.get("diversity_threshold", 0.1)
+    for run in range(runs):
+        print(f"\n=== Run {run + 1}/{runs} ===")
+        engine = GAEngine(
+            target_image=target_image,
+            canvas_size=canvas_size,
+            num_triangles=config["num_triangles"],
+            population_size=config["population_size"],
+            num_generations=config["num_generations"],
+            mutation_rate=config["mutation_rate"],
+            crossover_rate=config["crossover_rate"],
+            num_mutated_genes=config["num_mutated_genes"],
+            selection_method=config["selection_method"],
+            selection_params=config.get("selection_params", {}),
+            mutation_strategy=config["mutation_strategy"],
+            termination_params=config.get("termination", {})
+        )
+        best_individual, stats = engine.evolve()
+        final_fitness = best_individual.fitness
+        all_stats.append(stats)
 
-    # Initialize the GA engine with all parameters from the config
-    engine = GAEngine(
-        target_image=target_image,
-        canvas_size=canvas_size,
-        num_triangles=num_triangles,
-        population_size=population_size,
-        num_generations=num_generations,
-        mutation_rate=mutation_rate,
-        crossover_rate=crossover_rate,
-        num_mutated_genes=num_mutated_genes,
-        selection_method=selection_method,
-        selection_params=selection_params,
-        delta=delta,
-        mutation_strategy=mutation_strategy,
-        window_size=window_size,
-        stagnation_threshold=stagnation_threshold,
-        diversity_threshold=diversity_threshold
-    )
+        if final_fitness < best_final_fitness:
+            best_final_fitness = final_fitness
+            best_overall = best_individual
+            all_snapshots = stats["snapshots"]
 
-    # Run the evolution process
-    best_individual, fitness_history = engine.evolve()
+    # Save best output
+    output_dir = "../data/outputs"
+    os.makedirs(output_dir, exist_ok=True)
+    best_overall.render().save(os.path.join(output_dir, "best_output.png"))
 
-    # Render the phenotype (output image) of the best individual
-    output_image = best_individual.render()
+    # Save fitness stats (averaged across runs)
+    generations = len(all_stats[0]["best_fitness"])
+    df = pd.DataFrame({
+        "generation": list(range(generations)),
+        "best_fitness": [pd.Series(run["best_fitness"]) for run in all_stats],
+        "avg_fitness": [pd.Series(run["avg_fitness"]) for run in all_stats],
+        "diversity": [pd.Series(run["diversity"]) for run in all_stats]
+    }).explode(["best_fitness", "avg_fitness", "diversity"]).astype({
+        "generation": int,
+        "best_fitness": float,
+        "avg_fitness": float,
+        "diversity": float
+    })
 
-    # Create the output directory if it doesn't exist
-    output_directory = "../data/outputs"
-    os.makedirs(output_directory, exist_ok=True)
-    output_path = os.path.join(output_directory, "best_output.png")
-    output_image.save(output_path)
+    df.to_csv(os.path.join(output_dir, "fitness_history.csv"), index=False)
 
-    # Print summary information
-    print(f"Evolution complete.\nBest Fitness: {best_individual.fitness}")
-    print(f"Output image saved at: {output_path}")
+    # Plot averaged fitness evolution
+    plt.figure(figsize=(10, 6))
+    df_grouped = df.groupby("generation").agg({
+        "best_fitness": ["mean", "std"],
+        "avg_fitness": ["mean", "std"]
+    })
+    generations = df_grouped.index
+    best_mean = df_grouped[("best_fitness", "mean")]
+    best_std = df_grouped[("best_fitness", "std")]
+    avg_mean = df_grouped[("avg_fitness", "mean")]
+    avg_std = df_grouped[("avg_fitness", "std")]
+
+    plt.plot(generations, best_mean, label="Best Fitness", linewidth=2)
+    plt.fill_between(generations, best_mean - best_std, best_mean + best_std, alpha=0.2)
+    plt.plot(generations, avg_mean, linestyle="--", label="Avg Fitness")
+    plt.fill_between(generations, avg_mean - avg_std, avg_mean + avg_std, alpha=0.1)
+    plt.title("Fitness Evolution Across Runs")
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "fitness_plot.png"))
+    plt.close()
+
+    # Save animated evolution GIF
+    gif_path = os.path.join(output_dir, "evolution.gif")
+    save_gif(all_snapshots, gif_path, duration=300)
+
+    print(f"\nEvolution complete. Best fitness: {best_final_fitness:.6f}")
+    print(f"Results saved to: {output_dir}")
 
 
 if __name__ == "__main__":

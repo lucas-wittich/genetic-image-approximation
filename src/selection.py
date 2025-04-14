@@ -3,18 +3,22 @@ import random
 import math
 
 
-def roulette_selection(population, k):
-    """
-    Fitness proportionate (roulette wheel) selection.
-    """
+def invert_fitnesses(population):
+    """Convert minimization fitness values to selection scores where higher is better."""
+    max_f = max(ind.fitness for ind in population)
+    return [max_f - ind.fitness for ind in population]
 
-    total_fitness = sum(ind.fitness for ind in population)
+
+def roulette_selection(population, k):
+    """Fitness-proportionate (roulette wheel) selection for minimization problems."""
+    weights = invert_fitnesses(population)
+    total = sum(weights)
     selected = []
     for _ in range(k):
-        r = random.uniform(0, total_fitness)
+        r = random.uniform(0, total)
         cumulative = 0
-        for ind in population:
-            cumulative += ind.fitness
+        for ind, w in zip(population, weights):
+            cumulative += w
             if cumulative >= r:
                 selected.append(ind.clone())
                 break
@@ -22,24 +26,19 @@ def roulette_selection(population, k):
 
 
 def tournament_selection(population, k, tournament_size=5, deterministic=True):
-    """
-    Tournament selection.
-
-    If deterministic is True, the best individual in the tournament is chosen.
-    Otherwise, selection is probabilistic based on fitness.
-    """
-
+    """Tournament selection (best of N or probabilistic)."""
     selected = []
     for _ in range(k):
         tournament = random.sample(population, tournament_size)
         if deterministic:
-            winner = max(tournament, key=lambda ind: ind.fitness)
+            winner = min(tournament, key=lambda ind: ind.fitness)
         else:
-            total_fitness = sum(ind.fitness for ind in tournament)
-            r = random.uniform(0, total_fitness)
+            scores = invert_fitnesses(tournament)
+            total = sum(scores)
+            r = random.uniform(0, total)
             cumulative = 0
-            for ind in tournament:
-                cumulative += ind.fitness
+            for ind, s in zip(tournament, scores):
+                cumulative += s
                 if cumulative >= r:
                     winner = ind
                     break
@@ -48,16 +47,10 @@ def tournament_selection(population, k, tournament_size=5, deterministic=True):
 
 
 def ranking_selection(population, k):
-    """
-    Ranking selection.
-
-    The population is sorted by fitness and individuals are assigned probabilities proportional
-    to their rank.
-    """
-
+    """Ranking selection assigns probability based on sorted rank."""
     sorted_pop = sorted(population, key=lambda ind: ind.fitness)
     n = len(sorted_pop)
-    total_rank = sum(range(1, n+1))
+    total_rank = sum(range(1, n + 1))
     selected = []
     for _ in range(k):
         r = random.uniform(0, total_rank)
@@ -71,13 +64,9 @@ def ranking_selection(population, k):
 
 
 def boltzmann_selection(population, k, temperature=1.0):
-    """
-    Boltzmann (entropy-based) selection.
-
-    Weights are computed using an exponential function based on fitness and the current temperature.
-    """
-
-    weights = [math.exp(ind.fitness / temperature) for ind in population]
+    """Boltzmann selection (temperature-based softmax over inverted fitness)."""
+    scores = invert_fitnesses(population)
+    weights = [math.exp(score / temperature) for score in scores]
     total_weight = sum(weights)
     selected = []
     for _ in range(k):
@@ -92,49 +81,38 @@ def boltzmann_selection(population, k, temperature=1.0):
 
 
 def universal_selection(population, k):
-    """
-    Universal (stochastic remainder) selection.
-
-    Uses equally spaced pointers on the cumulative fitness wheel to select individuals.
-    """
-    total_fitness = sum(ind.fitness for ind in population)
-    start_point = random.uniform(0, total_fitness / k)
-    pointers = [start_point + i * total_fitness / k for i in range(k)]
+    """Universal selection: evenly spaced roulette pointers."""
+    scores = invert_fitnesses(population)
+    total_score = sum(scores)
+    step = total_score / k
+    start = random.uniform(0, step)
+    points = [start + i * step for i in range(k)]
     selected = []
-    for pointer in pointers:
+    for point in points:
         cumulative = 0
-        for ind in population:
-            cumulative += ind.fitness
-            if cumulative >= pointer:
+        for ind, s in zip(population, scores):
+            cumulative += s
+            if cumulative >= point:
                 selected.append(ind.clone())
                 break
     return selected
 
 
 def get_selection_method(method_name, **kwargs):
-    """
-    Returns a selection function based on the provided method name and parameters.
-
-    Supported method names (case-insensitive):
-      - "roulette"
-      - "tournament"   (kwargs: tournament_size, deterministic)
-      - "ranking"
-      - "boltzmann"    (kwargs: temperature)
-      - "universal"
-    """
-
+    """Return configured selection method with kwargs injected."""
     method_name = method_name.lower()
     if method_name == "roulette":
-        return lambda population, k: roulette_selection(population, k)
+        return lambda pop, k: roulette_selection(pop, k)
     elif method_name == "tournament":
-        return lambda population, k: tournament_selection(population, k,
-                                                          tournament_size=kwargs.get("tournament_size", 5),
-                                                          deterministic=kwargs.get("deterministic", True))
+        return lambda pop, k: tournament_selection(pop, k,
+                                                   tournament_size=kwargs.get("tournament_size", 5),
+                                                   deterministic=kwargs.get("deterministic", True))
     elif method_name == "ranking":
-        return lambda population, k: ranking_selection(population, k)
+        return lambda pop, k: ranking_selection(pop, k)
     elif method_name == "boltzmann":
-        return lambda population, k: boltzmann_selection(population, k, temperature=kwargs.get("temperature", 1.0))
+        return lambda pop, k: boltzmann_selection(pop, k,
+                                                  temperature=kwargs.get("temperature", 1.0))
     elif method_name == "universal":
-        return lambda population, k: universal_selection(population, k)
+        return lambda pop, k: universal_selection(pop, k)
     else:
         raise ValueError(f"Unknown selection method: {method_name}")

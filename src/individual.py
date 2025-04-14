@@ -1,9 +1,7 @@
-# Individual representation (ASCII or triangle-based)
+from mutation import complete_mutation, single_gene_mutation, limited_multi_gene_mutation, uniform_multi_gene_mutation
 import random
 import copy
 from PIL import Image, ImageDraw
-
-from mutation import complete_mutation, single_gene_mutation, limited_multi_gene_mutation, uniform_multi_gene_mutation
 
 
 class TriangleIndividual:
@@ -17,7 +15,6 @@ class TriangleIndividual:
             - color: a tuple (R, G, B, A) representing the color and transparency
         - canvas_size: a tuple (width, height) for the drawing canvas
         """
-
         self.triangles = triangles
         self.canvas_size = canvas_size
         self.fitness = fitness
@@ -34,7 +31,6 @@ class TriangleIndividual:
         Returns:
         - A TriangleIndividual instance with randomly generated triangle data.
         """
-
         width, height = canvas_size
         triangles = []
         for _ in range(num_triangles):
@@ -49,7 +45,7 @@ class TriangleIndividual:
                     random.randint(0, 255),  # Red
                     random.randint(0, 255),  # Green
                     random.randint(0, 255),  # Blue
-                    random.randint(30, 180)  # (translucency)
+                    random.randint(20, 150)  # Alpha (translucency)
                 )
             }
             triangles.append(triangle)
@@ -62,10 +58,18 @@ class TriangleIndividual:
         This is important to avoid side effects when modifying individuals
         during mutation or crossover.
         """
-
         return TriangleIndividual(copy.deepcopy(self.triangles), self.canvas_size, self.fitness)
 
     def mutate(self, mutation_rate=0.01, delta=10, mutation_strategy="uniform", num_mutated_genes=None):
+        """
+        Apply mutation to the individual's triangles based on the specified strategy.
+
+        Parameters:
+        - mutation_rate: Probability of mutation for each triangle.
+        - delta: Maximum change applied during mutation.
+        - mutation_strategy: Strategy to use for mutation ('single', 'limited', 'complete', 'uniform').
+        - num_mutated_genes: Number of genes to mutate (used in 'limited' strategy).
+        """
         new_triangles = []
         for triangle in self.triangles:
             if mutation_strategy == "single":
@@ -82,19 +86,29 @@ class TriangleIndividual:
 
     def render(self):
         """
-        Render the phenotype from the genotype.
-
+        Render the phenotype with proper alpha compositing using Pillow.
         Returns:
-        - A PIL Image showing all triangles drawn on a blank white canvas.
+            A PIL Image object representing the rendered individual.
         """
+        # Create a white RGBA base image
+        base = Image.new("RGBA", self.canvas_size, (255, 255, 255, 255))
 
-        img = Image.new("RGBA", self.canvas_size, (255, 255, 255, 255))
-        draw = ImageDraw.Draw(img, "RGBA")
         for triangle in self.triangles:
+            # Create a transparent layer
+            layer = Image.new("RGBA", self.canvas_size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(layer, "RGBA")
+
+            # Define triangle points
             points = [
                 (triangle["x1"], triangle["y1"]),
                 (triangle["x2"], triangle["y2"]),
                 (triangle["x3"], triangle["y3"]),
             ]
+
+            # Draw the triangle on the transparent layer
             draw.polygon(points, fill=triangle["color"])
-        return img
+
+            # Composite the layer onto the base image
+            base = Image.alpha_composite(base, layer)
+
+        return base

@@ -1,14 +1,23 @@
+
 import random
+import numpy as np
 from individual import TriangleIndividual
 from fitness import compute_triangle_fitness
 from selection import get_selection_method
 from termination import check_termination, compute_diversity
+from crossover import one_point_crossover, two_point_crossover, uniform_crossover
 
-import random
-import copy
-import numpy as np
-from individual import TriangleIndividual
-from selection import get_selection_method
+
+def get_crossover_function(name):
+    name = name.lower()
+    if name == "one_point":
+        return one_point_crossover
+    elif name == "two_point":
+        return two_point_crossover
+    elif name == "uniform":
+        return uniform_crossover
+    else:
+        raise ValueError(f"Unsupported crossover method: {name}")
 
 
 class GAEngine:
@@ -16,7 +25,8 @@ class GAEngine:
     def __init__(self, target_image, canvas_size, num_triangles, population_size,
                  num_generations, mutation_rate, crossover_rate, num_mutated_genes,
                  selection_method, selection_params, mutation_strategy, termination_params,
-                 elitism_rate=0.1):
+                 delta=10,
+                 crossover_method="one_point", elitism_rate=0.1, generation_approach="traditional"):
 
         self.target_image = target_image
         self.canvas_size = canvas_size
@@ -29,8 +39,12 @@ class GAEngine:
         self.selection_method = selection_method
         self.selection_params = selection_params
         self.mutation_strategy = mutation_strategy
-        self.termination_params = termination_params  # set this from config if needed
+        self.termination_params = termination_params
         self.elitism_rate = elitism_rate
+        self.crossover_func = get_crossover_function(crossover_method)
+        self.generation_approach = generation_approach
+        self.delta = delta
+
         self.population = []
         self.best_individual = None
 
@@ -48,14 +62,6 @@ class GAEngine:
         selection_fn = get_selection_method(self.selection_method, **self.selection_params)
         return selection_fn(self.population, self.population_size)
 
-    def one_point_crossover(self, parent1, parent2):
-        point = random.randint(1, self.num_triangles - 1)
-        child1_triangles = parent1.triangles[:point] + parent2.triangles[point:]
-        child2_triangles = parent2.triangles[:point] + parent1.triangles[point:]
-        child1 = TriangleIndividual(child1_triangles, self.canvas_size)
-        child2 = TriangleIndividual(child2_triangles, self.canvas_size)
-        return child1, child2
-
     def evolve(self):
         self.initialize_population()
         self.evaluate_fitness()
@@ -63,16 +69,10 @@ class GAEngine:
         best_fitness_history = []
         avg_fitness_history = []
         diversity_history = []
-        max_generations = self.num_generations
-        window_size = self.termination_params.get('window_size', 10)
-        stagnation_threshold = self.termination_params.get('stagnation_threshold', 0.001)
-        diversity_threshold = self.termination_params.get('diversity_threshold', 0.001)
+        snapshots = []
+        snapshot_interval = self.termination_params.get("snapshot_interval", 100)
 
         for gen in range(self.num_generations):
-
-            snapshots = []
-            snapshot_interval = self.termination_params.get("snapshot_interval", 100)
-
             self.population.sort(key=lambda ind: ind.fitness)
             elite_count = max(1, int(self.elitism_rate * self.population_size))
             elites = [ind.clone() for ind in self.population[:elite_count]]
@@ -85,21 +85,20 @@ class GAEngine:
                 parent2 = parents[i + 1] if i + 1 < len(parents) else parents[0]
 
                 if random.random() < self.crossover_rate:
-                    child1, child2 = self.one_point_crossover(parent1, parent2)
+                    child1, child2 = self.crossover_func(parent1, parent2)
                 else:
                     child1, child2 = parent1.clone(), parent2.clone()
 
-                child1.mutate(
-                    mutation_rate=self.mutation_rate,
-                    mutation_strategy=self.mutation_strategy,
-                    num_mutated_genes=self.num_mutated_genes
-                )
-                child2.mutate(
-                    mutation_rate=self.mutation_rate,
-                    mutation_strategy=self.mutation_strategy,
-                    num_mutated_genes=self.num_mutated_genes
-                )
-                next_generation.extend([child1, child2])
+                child1.mutate(mutation_rate=self.mutation_rate, delta=self.delta,
+                              mutation_strategy=self.mutation_strategy, num_mutated_genes=self.num_mutated_genes)
+                child2.mutate(mutation_rate=self.mutation_rate, mutation_strategy=self.mutation_strategy,
+                              num_mutated_genes=self.num_mutated_genes)
+
+                if self.generation_approach == "young_bias":
+                    next_generation.extend([child1, child2])
+                else:
+                    next_generation.append(child1)
+                    next_generation.append(child2)
 
             self.population = elites + next_generation[:self.population_size - elite_count]
             self.evaluate_fitness()
@@ -116,14 +115,17 @@ class GAEngine:
             print(f"Gen {gen+1} | Best: {best_fitness:.6f} | Avg: {avg_fitness:.6f} | Diversity: {diversity:.4f}")
             if (gen + 1) % snapshot_interval == 0:
                 snapshots.append(self.best_individual.render())
-            if check_termination(gen, max_generations, best_fitness_history,
-                                 window_size, stagnation_threshold,
-                                 self.population, diversity_threshold):
+
+            if check_termination(gen, self.num_generations, best_fitness_history,
+                                 self.termination_params.get("window_size", 10),
+                                 self.termination_params.get("stagnation_threshold", 0.001),
+                                 self.population,
+                                 self.termination_params.get("diversity_threshold", 0.001)):
                 break
 
         return self.best_individual, {
-            "snapshots": snapshots,
             "best_fitness": best_fitness_history,
             "avg_fitness": avg_fitness_history,
-            "diversity": diversity_history
+            "diversity": diversity_history,
+            "snapshots": snapshots
         }

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
 from ga_engine import GAEngine
+from utils import resize_image
 
 
 def save_gif(frames, path, duration=300):
@@ -14,11 +15,13 @@ def save_gif(frames, path, duration=300):
 
 
 def main():
-    with open('../configs/config_high_quality.json', "r") as f:
+    with open('../configs/config.json', "r") as f:
         config = json.load(f)
 
     target_image = Image.open(config["target_image"]).convert("RGBA")
-    canvas_size = target_image.size
+    canvas_size = config.get("canvas_size", target_image.size)
+    target_image = resize_image(target_image, canvas_size[0], canvas_size[1])
+
     runs = config.get("runs_per_config", 5)
 
     all_stats = []
@@ -40,8 +43,12 @@ def main():
             selection_method=config["selection_method"],
             selection_params=config.get("selection_params", {}),
             mutation_strategy=config["mutation_strategy"],
-            termination_params=config.get("termination", {})
-        )
+            termination_params=config.get("termination", {}),
+            delta=config.get("delta", 10),
+            crossover_method=config.get("crossover_method", "one_point"),
+            elitism_rate=config.get("elitism_rate", 0.1),
+            generation_approach=config.get("generation_approach", "traditional"))
+
         best_individual, stats = engine.evolve()
         final_fitness = best_individual.fitness
         all_stats.append(stats)
@@ -58,17 +65,18 @@ def main():
 
     # Save fitness stats (averaged across runs)
     generations = len(all_stats[0]["best_fitness"])
-    df = pd.DataFrame({
-        "generation": list(range(generations)),
-        "best_fitness": [pd.Series(run["best_fitness"]) for run in all_stats],
-        "avg_fitness": [pd.Series(run["avg_fitness"]) for run in all_stats],
-        "diversity": [pd.Series(run["diversity"]) for run in all_stats]
-    }).explode(["best_fitness", "avg_fitness", "diversity"]).astype({
-        "generation": int,
-        "best_fitness": float,
-        "avg_fitness": float,
-        "diversity": float
-    })
+    all_records = []
+    for run_id, run_stats in enumerate(all_stats):
+        for gen, (b, a, d) in enumerate(zip(run_stats["best_fitness"], run_stats["avg_fitness"], run_stats["diversity"])):
+            all_records.append({
+                "run": run_id,
+                "generation": gen,
+                "best_fitness": b,
+                "avg_fitness": a,
+                "diversity": d
+            })
+
+    df = pd.DataFrame(all_records)
 
     df.to_csv(os.path.join(output_dir, "fitness_history.csv"), index=False)
 
@@ -103,6 +111,61 @@ def main():
 
     print(f"\nEvolution complete. Best fitness: {best_final_fitness:.6f}")
     print(f"Results saved to: {output_dir}")
+
+
+def run_ga(config, output_dir="data/outputs"):
+    from ga_engine import GAEngine
+    from utils import load_image, resize_image, save_image, plot_fitness_metrics
+    from PIL import Image
+
+    # 1) Setup from config
+    target_image = load_image(config["input_image"])
+    canvas_size = config["canvas_size"]
+    target_image = resize_image(target_image, *canvas_size)
+
+    engine = GAEngine(
+        target_image=target_image,
+        canvas_size=canvas_size,
+        num_triangles=config["num_triangles"],
+        population_size=config["population_size"],
+        num_generations=config["num_generations"],
+        mutation_rate=config["mutation_rate"],
+        crossover_rate=config["crossover_rate"],
+        selection_method=config.get("selection_method", "tournament"),
+        selection_params=config.get("selection_params", {})
+    )
+
+    # 2) Run evolve
+    best_individual, fitness_history = engine.evolve()
+
+    # 3) Save results
+    # 4) Save triangles to JSON
+    triangle_json_path = os.path.join(output_dir, "best_individual.json")
+    with open(triangle_json_path, "w") as f:
+        json.dump(best_individual.triangles, f, indent=2)
+
+    rendered = best_individual.render()
+    best_img_path = os.path.join(output_dir, "best_individual.png")
+    side_by_side_path = os.path.join(output_dir, "side_by_side.png")
+    metrics_plot_path = os.path.join(output_dir, "metrics_plot.png")
+
+    save_image(rendered, best_img_path)
+
+    # side by side
+    input_resized = target_image.convert("RGB")
+    output_img = rendered.convert("RGB")
+    combined = Image.new("RGB", (input_resized.width * 2, input_resized.height))
+    combined.paste(input_resized, (0, 0))
+    combined.paste(output_img, (input_resized.width, 0))
+    combined.save(side_by_side_path)
+
+    plot_fitness_metrics(engine.min_fitness_history,
+                         engine.avg_fitness_history,
+                         engine.max_fitness_history,
+                         engine.diversity_history,
+                         metrics_plot_path)
+
+    return best_individual, engine
 
 
 if __name__ == "__main__":

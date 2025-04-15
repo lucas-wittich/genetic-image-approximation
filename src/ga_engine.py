@@ -72,6 +72,7 @@ class GAEngine:
         best_fitness_history = []
         avg_fitness_history = []
         diversity_history = []
+        normalized_fitness_history = []
         snapshots = []
         snapshot_interval = self.termination_params.get("snapshot_interval", 100)
 
@@ -115,10 +116,15 @@ class GAEngine:
             best_fitness = self.best_individual.fitness
             avg_fitness = np.mean([ind.fitness for ind in self.population])
             diversity = compute_diversity(self.population)
+            if gen == 0:
+                initial_fitness = best_fitness
+
+            normalized_fitness = 1 - (best_fitness / initial_fitness)
 
             best_fitness_history.append(best_fitness)
             avg_fitness_history.append(avg_fitness)
             diversity_history.append(diversity)
+            normalized_fitness_history.append(normalized_fitness)
 
             print(f"Gen {gen+1} | Best: {best_fitness:.6f} | Avg: {avg_fitness:.6f} | Diversity: {diversity:.4f}")
             if (gen + 1) % snapshot_interval == 0:
@@ -135,5 +141,6 @@ class GAEngine:
             "best_fitness": best_fitness_history,
             "avg_fitness": avg_fitness_history,
             "diversity": diversity_history,
+            "normalized_fitness": normalized_fitness_history,
             "snapshots": snapshots
         }

@@ -1,0 +1,22 @@
+{
+    "target_image": "../data/inputs/input_image.jpg",
+    "num_triangles": 150,
+    "population_size": 100,
+    "num_generations": 3000,
+    "mutation_rate": 0.1,
+    "crossover_rate": 0.7,
+    "delta": 10,
+    "num_mutated_genes": 4,
+    "mutation_strategy": "limited",
+    "selection_method": "tournament",
+    "selection_params": {
+        "tournament_size": 7,
+        "deterministic": true
+    },
+    "runs_per_config": 1,
+    "termination": {
+        "window_size": 20,
+        "stagnation_threshold": 0.0001,
+        "diversity_threshold": 0.0001
+    }
+}

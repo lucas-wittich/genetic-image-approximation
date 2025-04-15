@@ -54,5 +54,5 @@ def compute_triangle_fitness(individual, target_img):
     avg_area = np.mean([triangle_area(t) for t in individual.triangles])
     area_penalty_weight = 0.2
     area_penalty = (avg_area / canvas_area) * area_penalty_weight
-
-    return mse_rgb + 0.25 * mse_alpha + area_penalty
+    error = mse_rgb + 0.25 * mse_alpha + area_penalty
+    return 1 / (1 + error)

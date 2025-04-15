@@ -77,7 +77,7 @@ class GAEngine:
         snapshot_interval = self.termination_params.get("snapshot_interval", 100)
 
         for gen in range(self.num_generations):
-            self.population.sort(key=lambda ind: ind.fitness)
+            self.population.sort(key=lambda ind: ind.fitness, reverse=True)
             elite_count = max(1, int(self.elitism_rate * self.population_size))
             elites = [ind.clone() for ind in self.population[:elite_count]]
 
@@ -105,21 +105,21 @@ class GAEngine:
                 elite_count = self.population_size - offspring_count
                 self.evaluate_fitness(population=next_generation)
                 combined_pool = next_generation + elites
-                combined_pool.sort(key=lambda ind: ind.fitness)
+                combined_pool.sort(key=lambda ind: ind.fitness, reverse=True)
                 self.population = combined_pool[:self.population_size]
             else:
                 self.population = elites + next_generation[:self.population_size - elite_count]
 
             self.evaluate_fitness()
 
-            self.best_individual = min(self.population, key=lambda ind: ind.fitness)
+            self.best_individual = max(self.population, key=lambda ind: ind.fitness)
             best_fitness = self.best_individual.fitness
             avg_fitness = np.mean([ind.fitness for ind in self.population])
             diversity = compute_diversity(self.population)
             if gen == 0:
                 initial_fitness = best_fitness
 
-            normalized_fitness = 1 - (best_fitness / initial_fitness)
+            normalized_fitness = (best_fitness / initial_fitness)
 
             best_fitness_history.append(best_fitness)
             avg_fitness_history.append(avg_fitness)

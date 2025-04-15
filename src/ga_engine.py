@@ -55,8 +55,10 @@ class GAEngine:
             for _ in range(self.population_size)
         ]
 
-    def evaluate_fitness(self):
-        for individual in self.population:
+    def evaluate_fitness(self, population=None):
+        if population == None:
+            population = self.population
+        for individual in population:
             individual.fitness = compute_triangle_fitness(individual, self.target_image)
 
     def select_parents(self):
@@ -100,13 +102,13 @@ class GAEngine:
                 # Proportional bias: keep more offspring, fewer elites
                 offspring_count = int(self.population_size * self.young_bias_ratio)
                 elite_count = self.population_size - offspring_count
+                self.evaluate_fitness(population=next_generation)
                 combined_pool = next_generation + elites
                 combined_pool.sort(key=lambda ind: ind.fitness)
                 self.population = combined_pool[:self.population_size]
             else:
                 self.population = elites + next_generation[:self.population_size - elite_count]
 
-            self.population = elites + next_generation[:self.population_size - elite_count]
             self.evaluate_fitness()
 
             self.best_individual = min(self.population, key=lambda ind: ind.fitness)

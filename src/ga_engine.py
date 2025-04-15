@@ -25,7 +25,7 @@ class GAEngine:
     def __init__(self, target_image, canvas_size, num_triangles, population_size,
                  num_generations, mutation_rate, crossover_rate, num_mutated_genes,
                  selection_method, selection_params, mutation_strategy, termination_params,
-                 delta=10,
+                 delta=10, young_bias_ratio=0.8,
                  crossover_method="one_point", elitism_rate=0.1, generation_approach="traditional"):
 
         self.target_image = target_image
@@ -44,6 +44,7 @@ class GAEngine:
         self.crossover_func = get_crossover_function(crossover_method)
         self.generation_approach = generation_approach
         self.delta = delta
+        self.young_bias_ratio = young_bias_ratio
 
         self.population = []
         self.best_individual = None
@@ -91,14 +92,19 @@ class GAEngine:
 
                 child1.mutate(mutation_rate=self.mutation_rate, delta=self.delta,
                               mutation_strategy=self.mutation_strategy, num_mutated_genes=self.num_mutated_genes)
-                child2.mutate(mutation_rate=self.mutation_rate, mutation_strategy=self.mutation_strategy,
+                child2.mutate(mutation_rate=self.mutation_rate, delta=self.delta, mutation_strategy=self.mutation_strategy,
                               num_mutated_genes=self.num_mutated_genes)
+                next_generation.extend([child1, child2])
 
-                if self.generation_approach == "young_bias":
-                    next_generation.extend([child1, child2])
-                else:
-                    next_generation.append(child1)
-                    next_generation.append(child2)
+            if self.generation_approach == "young_bias":
+                # Proportional bias: keep more offspring, fewer elites
+                offspring_count = int(self.population_size * self.young_bias_ratio)
+                elite_count = self.population_size - offspring_count
+                combined_pool = next_generation + elites
+                combined_pool.sort(key=lambda ind: ind.fitness)
+                self.population = combined_pool[:self.population_size]
+            else:
+                self.population = elites + next_generation[:self.population_size - elite_count]
 
             self.population = elites + next_generation[:self.population_size - elite_count]
             self.evaluate_fitness()

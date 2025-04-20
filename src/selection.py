@@ -5,8 +5,13 @@ import math
 
 def invert_fitnesses(population):
     """Convert minimization fitness values to selection scores where higher is better."""
-    max_f = max(ind.fitness for ind in population)
-    return [max_f - ind.fitness for ind in population]
+    fitnesses = [ind.fitness for ind in population]
+
+    min_f = min(fitnesses)
+    if min_f <= 0:
+        fitnesses = [f - min_f + 1e-8 for f in fitnesses]
+
+    return fitnesses
 
 
 def roulette_selection(population, k):
@@ -31,7 +36,7 @@ def tournament_selection(population, k, tournament_size=5, deterministic=True):
     for _ in range(k):
         tournament = random.sample(population, tournament_size)
         if deterministic:
-            winner = min(tournament, key=lambda ind: ind.fitness)
+            winner = max(tournament, key=lambda ind: ind.fitness)
         else:
             scores = invert_fitnesses(tournament)
             total = sum(scores)

@@ -45,6 +45,7 @@ class GAEngine:
         self.generation_approach = generation_approach
         self.delta = delta
         self.young_bias_ratio = young_bias_ratio
+        self.crossover_funcs = [one_point_crossover, two_point_crossover, uniform_crossover]
 
         self.population = []
         self.best_individual = None
@@ -76,7 +77,12 @@ class GAEngine:
         snapshots = []
         snapshot_interval = self.termination_params.get("snapshot_interval", 100)
 
+        base_mutation = self.mutation_rate
+        min_mutation = 0.05  # floor mutation rate at 5%
+
         for gen in range(self.num_generations):
+            frac = gen / max(1, self.num_generations - 1)
+            current_mutation_rate = base_mutation * (1 - frac) + min_mutation * frac
             self.population.sort(key=lambda ind: ind.fitness, reverse=True)
             elite_count = max(1, int(self.elitism_rate * self.population_size))
             elites = [ind.clone() for ind in self.population[:elite_count]]
@@ -89,13 +95,14 @@ class GAEngine:
                 parent2 = parents[i + 1] if i + 1 < len(parents) else parents[0]
 
                 if random.random() < self.crossover_rate:
-                    child1, child2 = self.crossover_func(parent1, parent2)
+                    fn = random.choice(self.crossover_funcs)
+                    child1, child2 = fn(parent1, parent2)
                 else:
                     child1, child2 = parent1.clone(), parent2.clone()
 
-                child1.mutate(mutation_rate=self.mutation_rate, delta=self.delta,
+                child1.mutate(mutation_rate=current_mutation_rate, delta=self.delta,
                               mutation_strategy=self.mutation_strategy, num_mutated_genes=self.num_mutated_genes)
-                child2.mutate(mutation_rate=self.mutation_rate, delta=self.delta, mutation_strategy=self.mutation_strategy,
+                child2.mutate(mutation_rate=current_mutation_rate, delta=self.delta, mutation_strategy=self.mutation_strategy,
                               num_mutated_genes=self.num_mutated_genes)
                 next_generation.extend([child1, child2])
 

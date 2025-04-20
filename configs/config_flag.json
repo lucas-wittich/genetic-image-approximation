@@ -1,0 +1,25 @@
+  {
+    "canvas_size": [284, 177],
+    "num_generations": 800,
+    "num_triangles": 150,
+    "population_size": 120,
+    "elitism_rate": 0.2,
+    "mutation_rate": 0.4,
+    "mutation_strategy": "limited",
+    "num_mutated_genes": 6,
+    "delta": 15,
+    "crossover_rate": 0.6,
+    "crossover_method": "one_point",
+    "selection_method": "tournament",
+    "selection_params": {"tournament_size": 7, "deterministic": true},
+    "generation_approach": "traditional",
+    "target_image": "../data/inputs/argentina_flag.png",
+    "runs_per_config": 1,
+    "termination": {
+      "window_size": 50,
+      "stagnation_threshold": 0.0002,
+      "diversity_threshold": 0.00005,
+      "snapshot_interval": 50
+    }
+  }
+  

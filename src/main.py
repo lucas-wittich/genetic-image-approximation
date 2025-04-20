@@ -15,7 +15,7 @@ def save_gif(frames, path, duration=300):
 
 
 def main():
-    with open('../configs/config.json', "r") as f:
+    with open('../configs/config_flag.json', "r") as f:
         config = json.load(f)
 
     target_image = Image.open(config["target_image"]).convert("RGBA")
@@ -27,7 +27,7 @@ def main():
     all_stats = []
     all_snapshots = []
     best_overall = None
-    best_final_fitness = float('inf')
+    best_final_fitness = -float('inf')
 
     for run in range(runs):
         print(f"\n=== Run {run + 1}/{runs} ===")
@@ -53,7 +53,7 @@ def main():
         final_fitness = best_individual.fitness
         all_stats.append(stats)
 
-        if final_fitness < best_final_fitness:
+        if final_fitness > best_final_fitness:
             best_final_fitness = final_fitness
             best_overall = best_individual
             all_snapshots = stats["snapshots"]
@@ -61,7 +61,7 @@ def main():
     # Save best output
     output_dir = "../data/outputs"
     os.makedirs(output_dir, exist_ok=True)
-    best_overall.render().save(os.path.join(output_dir, "best_output.png"))
+    best_overall.render().save(os.path.join(output_dir, "arg_output.png"))
 
     # Save fitness stats (averaged across runs)
     generations = len(all_stats[0]["best_fitness"])
@@ -78,7 +78,7 @@ def main():
 
     df = pd.DataFrame(all_records)
 
-    df.to_csv(os.path.join(output_dir, "fitness_history.csv"), index=False)
+    df.to_csv(os.path.join(output_dir, "fitness_arg_history.csv"), index=False)
 
     # Plot averaged fitness evolution
     plt.figure(figsize=(10, 6))
@@ -102,70 +102,15 @@ def main():
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "fitness_plot.png"))
+    plt.savefig(os.path.join(output_dir, "fitness_arg_plot.png"))
     plt.close()
 
     # Save animated evolution GIF
-    gif_path = os.path.join(output_dir, "evolution.gif")
+    gif_path = os.path.join(output_dir, "evolution_arg.gif")
     save_gif(all_snapshots, gif_path, duration=300)
 
     print(f"\nEvolution complete. Best fitness: {best_final_fitness:.6f}")
     print(f"Results saved to: {output_dir}")
-
-
-def run_ga(config, output_dir="data/outputs"):
-    from ga_engine import GAEngine
-    from utils import load_image, resize_image, save_image, plot_fitness_metrics
-    from PIL import Image
-
-    # 1) Setup from config
-    target_image = load_image(config["input_image"])
-    canvas_size = config["canvas_size"]
-    target_image = resize_image(target_image, *canvas_size)
-
-    engine = GAEngine(
-        target_image=target_image,
-        canvas_size=canvas_size,
-        num_triangles=config["num_triangles"],
-        population_size=config["population_size"],
-        num_generations=config["num_generations"],
-        mutation_rate=config["mutation_rate"],
-        crossover_rate=config["crossover_rate"],
-        selection_method=config.get("selection_method", "tournament"),
-        selection_params=config.get("selection_params", {})
-    )
-
-    # 2) Run evolve
-    best_individual, fitness_history = engine.evolve()
-
-    # 3) Save results
-    # 4) Save triangles to JSON
-    triangle_json_path = os.path.join(output_dir, "best_individual.json")
-    with open(triangle_json_path, "w") as f:
-        json.dump(best_individual.triangles, f, indent=2)
-
-    rendered = best_individual.render()
-    best_img_path = os.path.join(output_dir, "best_individual.png")
-    side_by_side_path = os.path.join(output_dir, "side_by_side.png")
-    metrics_plot_path = os.path.join(output_dir, "metrics_plot.png")
-
-    save_image(rendered, best_img_path)
-
-    # side by side
-    input_resized = target_image.convert("RGB")
-    output_img = rendered.convert("RGB")
-    combined = Image.new("RGB", (input_resized.width * 2, input_resized.height))
-    combined.paste(input_resized, (0, 0))
-    combined.paste(output_img, (input_resized.width, 0))
-    combined.save(side_by_side_path)
-
-    plot_fitness_metrics(engine.min_fitness_history,
-                         engine.avg_fitness_history,
-                         engine.max_fitness_history,
-                         engine.diversity_history,
-                         metrics_plot_path)
-
-    return best_individual, engine
 
 
 if __name__ == "__main__":

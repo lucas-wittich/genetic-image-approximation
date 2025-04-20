@@ -91,6 +91,24 @@ Given any input image and a triangle count **T**, approximate the image by drawi
 
 ## ⚙️ How to Run
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
+
+1. Clone this repository:
+   ```sh
+   git clone https://github.com/lucas-wittich/72.27-SIA
+   cd 72.27-SIA/TP1/Sokoban
+   ```
+
+2. Run the code:
+
+   ```sh
+   python <file-to-run.py>
+   ```
+
+   - [`main.py`](src/main.py)  
+   Run the main method for the GA_engine.
+   Optional: Pass your own config.json for an image. See [`config.json`](configs/config.json) for default config.
+   ```sh
+   python main.py <config_file.json> 
+   ```
+
+3. Examine the output and metrics in [`data/outputs/<image_name>`](data/outputs)

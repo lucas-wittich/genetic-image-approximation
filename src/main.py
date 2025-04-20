@@ -1,6 +1,7 @@
 
 import json
 import os
+import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
@@ -15,7 +16,17 @@ def save_gif(frames, path, duration=300):
 
 
 def main():
-    with open('../configs/config_flag.json', "r") as f:
+    parser = argparse.ArgumentParser(
+        description="Run triangle‑GA based on a JSON config"
+    )
+    parser.add_argument(
+        "config_path",
+        nargs="?",
+        default="../configs/config.json",
+        help="Path to JSON config file (default: ../configs/config.json)"
+    )
+    args = parser.parse_args()
+    with open(args.config_path, "r") as f:
         config = json.load(f)
 
     target_image = Image.open(config["target_image"]).convert("RGBA")
@@ -59,9 +70,12 @@ def main():
             all_snapshots = stats["snapshots"]
 
     # Save best output
-    output_dir = "../data/outputs"
+    image_basename = os.path.splitext(
+        os.path.basename(config["target_image"])
+    )[0]
+    output_dir = os.path.join("..", "data", "outputs", image_basename)
     os.makedirs(output_dir, exist_ok=True)
-    best_overall.render().save(os.path.join(output_dir, "arg_output.png"))
+    best_overall.render().save(os.path.join(output_dir, "best_output.png"))
 
     # Save fitness stats (averaged across runs)
     generations = len(all_stats[0]["best_fitness"])
@@ -78,7 +92,7 @@ def main():
 
     df = pd.DataFrame(all_records)
 
-    df.to_csv(os.path.join(output_dir, "fitness_arg_history.csv"), index=False)
+    df.to_csv(os.path.join(output_dir, "fitness_history.csv"), index=False)
 
     # Plot averaged fitness evolution
     plt.figure(figsize=(10, 6))
@@ -102,11 +116,11 @@ def main():
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "fitness_arg_plot.png"))
+    plt.savefig(os.path.join(output_dir, "fitness_plot.png"))
     plt.close()
 
     # Save animated evolution GIF
-    gif_path = os.path.join(output_dir, "evolution_arg.gif")
+    gif_path = os.path.join(output_dir, "evolution_.gif")
     save_gif(all_snapshots, gif_path, duration=300)
 
     print(f"\nEvolution complete. Best fitness: {best_final_fitness:.6f}")

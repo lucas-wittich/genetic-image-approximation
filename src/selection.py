@@ -4,7 +4,6 @@ import math
 
 
 def invert_fitnesses(population):
-    """Convert minimization fitness values to selection scores where higher is better."""
     fitnesses = [ind.fitness for ind in population]
 
     min_f = min(fitnesses)

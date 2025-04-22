@@ -3,7 +3,7 @@ import random
 import math
 
 
-def invert_fitnesses(population):
+def collect_fitnesses(population):
     fitnesses = [ind.fitness for ind in population]
 
     min_f = min(fitnesses)
@@ -15,7 +15,7 @@ def invert_fitnesses(population):
 
 def roulette_selection(population, k):
     """Fitness-proportionate (roulette wheel) selection for minimization problems."""
-    weights = invert_fitnesses(population)
+    weights = collect_fitnesses(population)
     total = sum(weights)
     selected = []
     for _ in range(k):
@@ -37,7 +37,7 @@ def tournament_selection(population, k, tournament_size=5, deterministic=True):
         if deterministic:
             winner = max(tournament, key=lambda ind: ind.fitness)
         else:
-            scores = invert_fitnesses(tournament)
+            scores = collect_fitnesses(tournament)
             total = sum(scores)
             r = random.uniform(0, total)
             cumulative = 0
@@ -69,7 +69,7 @@ def ranking_selection(population, k):
 
 def boltzmann_selection(population, k, temperature=1.0):
     """Boltzmann selection (temperature-based softmax over inverted fitness)."""
-    scores = invert_fitnesses(population)
+    scores = collect_fitnesses(population)
     weights = [math.exp(score / temperature) for score in scores]
     total_weight = sum(weights)
     selected = []
@@ -86,7 +86,7 @@ def boltzmann_selection(population, k, temperature=1.0):
 
 def universal_selection(population, k):
     """Universal selection: evenly spaced roulette pointers."""
-    scores = invert_fitnesses(population)
+    scores = collect_fitnesses(population)
     total_score = sum(scores)
     step = total_score / k
     start = random.uniform(0, step)

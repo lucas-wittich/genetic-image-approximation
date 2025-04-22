@@ -22,7 +22,7 @@ def main():
     parser.add_argument(
         "config_path",
         nargs="?",
-        default="../configs/config_flag.json",
+        default="../configs/config.json",
         help="Path to JSON config file (default: ../configs/config.json)"
     )
     args = parser.parse_args()
@@ -122,6 +122,7 @@ def main():
     # Save animated evolution GIF
     gif_path = os.path.join(output_dir, "evolution.gif")
     save_gif(all_snapshots, gif_path, duration=300)
+    best_overall.save_csv(os.path.join(output_dir, "best_overall_triangles.csv"))
 
     print(f"\nEvolution complete. Best fitness: {best_final_fitness:.6f}")
     print(f"Results saved to: {output_dir}")

@@ -1,17 +1,7 @@
 # TP2 - Genetic Algorithms
-**Artificial Intelligence Systems – ITBA (2025)**  
-Authors: [Your Name(s)]  
-Date: [Submission Date]  
-
 ---
 
-## 📘 Project Description
-
-This project implements a Genetic Algorithm engine to solve two visual approximation problems:
-
 ### Exercise 1: ASCII Image Generation
-
-
 
 Given a square input image, the goal is to generate an ASCII representation arranged in an NxN grid that visually resembles the original image. This is achieved by applying a Genetic Algorithm (GA) to optimize the placement of ASCII characters based on brightness values.
 
@@ -70,8 +60,9 @@ Given any input image and a triangle count **T**, approximate the image by drawi
 ## 🧠 Problem Inputs & Outputs
 
 ### Inputs
+Config containing the at least the following, defaults to ['config.json'](configs/config.json) if none provided.
 - Input image file
-- Number of triangles `T` (for Exercise 2)
+- Number of triangles `T`
 - Genetic algorithm hyperparameters:
   - Population size
   - Crossover and mutation probabilities
@@ -79,13 +70,13 @@ Given any input image and a triangle count **T**, approximate the image by drawi
   - Termination criteria (generations, fitness stagnation, etc.)
 
 ### Outputs
-- Generated image (ASCII art or triangle-based)
+- Generated image
 - A list of triangles (position, color, opacity)
+- A GIF of the evolution
 - Performance metrics:
   - Best fitness
-  - Error over generations
+  - Fitness over generations (Plot and CSV file)
   - Number of generations
-  - Execution time (optional)
 
 ---
 

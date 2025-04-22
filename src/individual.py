@@ -1,3 +1,4 @@
+import pandas as pd
 from mutation import complete_mutation, single_gene_mutation, limited_multi_gene_mutation, uniform_multi_gene_mutation
 import random
 import copy
@@ -112,3 +113,27 @@ class TriangleIndividual:
             base = Image.alpha_composite(base, layer)
 
         return base
+
+    def to_dataframe(self):
+        """
+        Flatten self.triangles (list of dicts) into a pandas DataFrame
+        with columns: x1, y1, x2, y2, x3, y3, r, g, b, a.
+        """
+        records = []
+        for tri in self.triangles:
+            x1, y1 = tri["x1"], tri["y1"]
+            x2, y2 = tri["x2"], tri["y2"]
+            x3, y3 = tri["x3"], tri["y3"]
+            r, g, b, a = tri["color"]
+            records.append({
+                "x1": x1, "y1": y1,
+                "x2": x2, "y2": y2,
+                "x3": x3, "y3": y3,
+                "r": r,   "g": g,
+                "b": b,   "a": a
+            })
+        return pd.DataFrame.from_records(records)
+
+    def save_csv(self, path):
+        df = self.to_dataframe()
+        df.to_csv(path, index=False)

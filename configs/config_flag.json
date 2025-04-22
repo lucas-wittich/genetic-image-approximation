@@ -1,0 +1,26 @@
+  {
+    "canvas_size": [284, 177],
+    "num_generations": 4000,
+    "num_triangles": 100,
+    "population_size": 120,
+    "elitism_rate": 0.1,
+    "mutation_rate": 0.3,
+    "mutation_strategy": "limited",
+    "num_mutated_genes": 2,
+    "delta": 12,
+    "crossover_rate": 0.8,
+    "crossover_method": ["one_point","two_point","uniform"],
+    "selection_method": "boltzmann",
+    "selection_params": {"temperature": 1.0},
+    "generation_approach": "young_bias",
+    "young_bias_ratio": 0.5,
+    "target_image": "../data/inputs/argentina_flag.png",
+    "runs_per_config": 1,
+    "termination": {
+      "window_size": 500,
+      "stagnation_threshold": 0.0005,
+      "diversity_threshold": 0.0005,
+      "snapshot_interval": 50
+    }
+  }
+  

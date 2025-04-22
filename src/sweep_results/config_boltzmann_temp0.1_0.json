@@ -1,0 +1,25 @@
+{
+  "canvas_size": [
+    64,
+    64
+  ],
+  "num_triangles": 50,
+  "population_size": 40,
+  "num_generations": 150,
+  "mutation_rate": 0.2,
+  "crossover_rate": 0.6,
+  "num_mutated_genes": 3,
+  "runs_per_config": 3,
+  "mutation_strategy": "limited",
+  "crossover_method": "uniform",
+  "target_image_path": "../data/inputs/input_image.jpg",
+  "termination": {
+    "window_size": 10,
+    "stagnation_threshold": 0.001,
+    "diversity_threshold": 0.001
+  },
+  "selection_method": "boltzmann",
+  "selection_params": {
+    "temperature": 0.1
+  }
+}

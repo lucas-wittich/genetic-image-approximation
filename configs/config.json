@@ -1,0 +1,25 @@
+{
+  "canvas_size": [600, 450],
+  "num_generations": 6000,
+  "num_triangles": 350,
+  "population_size": 150,
+  "elitism_rate": 0.05,
+  "mutation_rate": 0.25,
+  "mutation_strategy": "limited",
+  "num_mutated_genes": 4,
+  "delta": 12,
+  "crossover_rate": 0.85,
+  "crossover_method": ["one_point","two_point","uniform"],
+  "selection_method": "boltzmann",
+  "selection_params": {"temperature": 1.0},
+  "generation_approach": "young_bias",
+  "young_bias_ratio": 0.6,
+  "target_image": "../data/inputs/input_image.jpg",
+  "runs_per_config": 1,
+  "termination": {
+    "window_size": 500,
+    "stagnation_threshold": 0.0003,
+    "diversity_threshold": 0.0002,
+    "snapshot_interval": 50
+  }
+}
